@@ -5,7 +5,7 @@ using System.Collections.Specialized;
 using UnityEngine;
 
 [RequireComponent(typeof(MeshFilter))]
-public class BaseTorusGen : MonoBehaviour
+public class TorusManager : MonoBehaviour
 {
     System.Random random = new System.Random();
     Mesh mesh;
@@ -36,17 +36,16 @@ public class BaseTorusGen : MonoBehaviour
         UpdateMesh();
     }
 
-    // Is called every frame
     void Update()
     {
         if (Input.GetKey(KeyCode.LeftArrow))
         {
-
+            transform.Rotate(Vector3.up * 2.0f * Time.deltaTime);
         }
 
         if (Input.GetKey(KeyCode.RightArrow))
         {
-
+            transform.Rotate(-Vector3.up * 2.0f * Time.deltaTime);
         }
     }
 
