@@ -9,8 +9,8 @@ public class TorusManager : MonoBehaviour
 {
     System.Random random = new System.Random();
     Mesh mesh;
-    //Points on the major radius
-    private Vector3[] mjrRdPnts;
+    //Points on the center circle
+    private Vector3[] centerCirclePoints;
     //Final vertices on the donut
     private Vector3[] vertices;
     //Indexes of triangle coords
@@ -40,13 +40,45 @@ public class TorusManager : MonoBehaviour
     {
         if (Input.GetKey(KeyCode.LeftArrow))
         {
-            transform.Rotate(Vector3.up * 2.0f * Time.deltaTime);
+            transform.Rotate(Vector3.up * 90f * Time.deltaTime);
         }
 
         if (Input.GetKey(KeyCode.RightArrow))
         {
-            transform.Rotate(-Vector3.up * 2.0f * Time.deltaTime);
+            transform.Rotate(-Vector3.up * 90f * Time.deltaTime);
         }
+
+        if (Input.GetKey(KeyCode.UpArrow))
+        {
+            RotateOnCenterCircle(90f * Time.deltaTime);
+        }
+
+        if (Input.GetKey(KeyCode.DownArrow))
+        {
+            RotateOnCenterCircle(-90f * Time.deltaTime);
+        }
+    }
+
+    void RotateOnCenterCircle(float angle)
+    {
+        // Loops through each segment of the center circle
+        for (int i = 0; i < centerCirclePoints.Length; i++)
+        {
+            // Loops through all the points on the minor circle
+            for (int j = 0; j < minorSegments; j++)
+            {
+                // Fetches the point to rotate around the center circle
+                Vector3 pointToRotate = vertices[i * minorSegments + j];
+
+                // Rotates the point around the tangent of the center circle at the current circle point
+                Vector3 tangent = Vector3.Cross(Vector3.up, centerCirclePoints[i] - torusCenter).normalized;
+                pointToRotate = Quaternion.AngleAxis(angle, tangent) * (pointToRotate - centerCirclePoints[i]) + centerCirclePoints[i];
+
+                // Updates the position of the point
+                vertices[i * minorSegments + j] = pointToRotate;
+            }
+        }
+        UpdateMesh();
     }
 
     void CreateShape()
@@ -54,7 +86,7 @@ public class TorusManager : MonoBehaviour
         //List of vertices of the torus
         vertices = new Vector3[majorSegments * minorSegments];
         //List of points around the major circle
-        mjrRdPnts = new Vector3[majorSegments];
+        centerCirclePoints = new Vector3[majorSegments];
         //Calculates the points around the circle with the major radius, then calculates the vertices around those points
         var n = 0;
         for (int i = 0; i < majorSegments; i++)
@@ -62,7 +94,7 @@ public class TorusManager : MonoBehaviour
             u += 2 * (float)Math.PI / majorSegments;
             Vector3 temp = new Vector3((float)Math.Cos(u), 0f, (float)Math.Sin(u));
             Vector3 newPoint = torusCenter + majorRadius * temp;
-            mjrRdPnts[i] = newPoint;
+            centerCirclePoints[i] = newPoint;
             //Calculates the vertices around the circle with the minor radius
             v = 0f;
             for (int j = 0; j < minorSegments; j++)
