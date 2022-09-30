@@ -1,7 +1,9 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using UnityEditor;
 using UnityEngine;
+using UnityEngine.UIElements;
 using static UnityEngine.ParticleSystem;
 
 public class TetrisManager : MonoBehaviour
@@ -32,20 +34,9 @@ public class TetrisManager : MonoBehaviour
         _minorSegments = GetComponent<TorusManager>().MinorSegments;
         // Creates 2D array for tetris representation
         _landed = new int[_majorSegments, _minorSegments];
-        for (int i = 0; i < _landed.GetLength(0); i++)
-        {
-            _landed[i, 0] = 1;
-        }
-        for (int i = 0; i < _landed.GetLength(1); i++)
-        {
-            _landed[2, i] = 1;
-        }
-
-        // Tetmap initialization
-        InitializeTetMap();
 
         // Spawns a tetromino at the top left
-        _currentTet = new Tetromino(_tetMap['S'], new Vector2(2, 2));
+        _currentTet = new Tetromino(Block.T, new Vector2(2, 2));
     }
 
     // Update is called once per frame
@@ -68,25 +59,112 @@ public class TetrisManager : MonoBehaviour
             // Do things during normal ticks here
             //_normalTickCount++;
         }
+
+        //TODO: Implement wrapping
+
+        if (Input.GetKeyDown(KeyCode.Z))
+        {
+            RotateTetromino(false);
+        }
+
+        if (Input.GetKeyDown(KeyCode.X))
+        {
+            RotateTetromino(true);
+        }
+
+        if (Input.GetKeyDown(KeyCode.DownArrow))
+        {
+            MoveTetromino(0, 1);
+        }
+
+        if (Input.GetKeyDown(KeyCode.LeftArrow))
+        {
+            MoveTetromino(-1, 0);
+        }
+
+        if (Input.GetKeyDown(KeyCode.RightArrow))
+        {
+            MoveTetromino(1, 0);
+        }
     }
 
-    private void InitializeTetMap()
+    void MoveTetromino(int x, int y)
     {
-        _tetMap.Add('I', new int[,] {{ 2, 2, 2, 2 }});
-        _tetMap.Add('J', new int[,] {{ 3, 0, 0 },
-                                     { 3, 3, 3 }});
-        _tetMap.Add('L', new int[,] {{ 0, 0, 4 },
-                                     { 4, 4, 4 }});
-        _tetMap.Add('O', new int[,] {{ 5, 5 },
-                                     { 5, 5 }});
-        _tetMap.Add('S', new int[,] {{ 0, 6, 6 },
-                                     { 6, 6, 0 }});
-        _tetMap.Add('T', new int[,] {{ 0, 7, 0 },
-                                     { 7, 7, 7 }});
-        _tetMap.Add('Z', new int[,] {{ 8, 8, 0 },
-                                     { 0, 8, 8 }});
+        _currentTet.Position += new Vector2(x, y);
+        if (HasConflict())
+        {
+            _currentTet.Position -= new Vector2(x, y);
+        }
     }
 
+    void RotateTetromino(bool rotatingRight)
+    {
+        int[,] oldShape = _currentTet.Shape;
+        Vector2 oldPos = _currentTet.Position;
+
+        // Simulates rotation
+        _currentTet.Position += _currentTet.RotationToPosDisplace(_currentTet.BlockType, _currentTet.Orientation, rotatingRight);
+        _currentTet.Orientation += rotatingRight ? 1 : -1;
+        _currentTet.Shape = _currentTet.BlockToShape(_currentTet.BlockType, _currentTet.Orientation);
+
+        // Reverts changes if the rotation is invalid
+        if (HasConflict())
+        {
+            // If wall kick fails, revert rotation
+            if (!AttemptWallKick())
+            {
+                _currentTet.Orientation -= rotatingRight ? 1 : -1;
+                _currentTet.Shape = oldShape;
+                _currentTet.Position = oldPos;
+            }
+        }
+    }
+
+    // Returns whether a configuration would conflict with the current board
+    public bool HasConflict()
+    {
+        for (int i = 0; i < _currentTet.Shape.GetLength(0); i++)
+            for (int j = 0; j < _currentTet.Shape.GetLength(1); j++)
+                if (_currentTet.Shape[i, j] != 0)
+                    if (_landed[i + (int)_currentTet.Position.y, j + (int)_currentTet.Position.x] != 0)
+                        return true;
+        return false;
+    }
+
+    // Attempts a wall kick, returns false if fails
+    public bool AttemptWallKick()
+    {
+        // Since a simple rotation fails, this attempts all the test cases
+        _currentTet.Position = new Vector2(_currentTet.Position.x + 1, _currentTet.Position.y);
+        if (HasConflict())
+        {
+            _currentTet.Position = new Vector2(_currentTet.Position.x, _currentTet.Position.y - 1);
+            if (HasConflict())
+            {
+                _currentTet.Position = new Vector2(_currentTet.Position.x - 1, _currentTet.Position.y + 3);
+                if (HasConflict())
+                {
+                    _currentTet.Position = new Vector2(_currentTet.Position.x + 1, _currentTet.Position.y);
+                    if (HasConflict())
+                    {
+                        _currentTet.Position = new Vector2(_currentTet.Position.x - 1, _currentTet.Position.y - 2);
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    public int mapWrapX(int x) => mod(x, _landed.GetLength(1));
+
+    public int mapWrapY(int y) => mod(y, _landed.GetLength(0));
+
+    // Helper function for modulo that works consistently with negative numbers
+    int mod(int x, int m)
+    {
+        return (x % m + m) % m;
+    }
     /*
     void OnGUI()
     {
