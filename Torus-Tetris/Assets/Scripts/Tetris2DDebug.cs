@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 using System.Drawing;
@@ -52,6 +53,14 @@ public class Tetris2DDebug : MonoBehaviour
         // Creates a list of pixels to be assigned to the texture
         Color[] pix = new Color[_minorSegments * _majorSegments];
 
+        // Gets coordinates of the tetromino for easy rendering
+        List<Vector2> tetCoords = new List<Vector2>();
+        for (int i = 0; i < _tet.Height; i++)
+            for (int j = 0; j < _tet.Width; j++)
+                if (_tet.Shape[i, j] != 0)
+                    tetCoords.Add(new Vector2(MapWrapX((int)_tet.Position.x + j), MapWrapY((int)_tet.Position.y + i)));
+
+
         // Renders the current tetris game board
         for (int i = 0; i < _majorSegments; i++)
         {
@@ -62,27 +71,16 @@ public class Tetris2DDebug : MonoBehaviour
 
                 // Renders the board
                 Color pixelColor = _colorMap[_gameBoard[modifiedI, j]];
-
-                // Checks for and renders the tetromino
-                bool tileInTetBoundsX = j >= _tet.Position.x && j <= _tet.Position.x + _tet.Width - 1;
-                bool tileInTetBoundsY = modifiedI >= _tet.Position.y && modifiedI <= _tet.Position.y + _tet.Height - 1;
-                // You're in the bounds of the tetromino
-                if (tileInTetBoundsX && tileInTetBoundsY)
-                {
-                    int inTetX = j - (int)_tet.Position.x;
-                    int inTetY = modifiedI - (int)_tet.Position.y;
-                    // There is a tetromino tile present on the current coords
-                    if (_tet.Shape[inTetY, inTetX] != 0)
-                    {
-                        pixelColor = _colorMap[_tet.Shape[inTetY, inTetX]];
-                    }
-                }
+                
+                if (tetCoords.Contains(new Vector2(j, modifiedI)))
+                      pixelColor = _colorMap[(int)_tet.BlockType];
 
                 // Adds the pixel to the list
                 pixelColor.a = .8f;
                 pix[i * _minorSegments + j] = pixelColor;
             }
         }
+
         Texture2D result = new Texture2D(_minorSegments, _majorSegments);
         result.SetPixels(pix);
         result.Apply();
@@ -105,6 +103,10 @@ public class Tetris2DDebug : MonoBehaviour
         RenderTexture.ReleaseTemporary(rt);
         return nTex;
     }
+
+    public int MapWrapX(int x) => mod(x, _minorSegments);
+    public int MapWrapY(int y) => mod(y, _majorSegments);
+    int mod(int x, int m) => (x % m + m) % m;
 
     private void InitializeColorMap()
     {

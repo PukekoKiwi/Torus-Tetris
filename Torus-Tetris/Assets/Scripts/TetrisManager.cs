@@ -90,10 +90,10 @@ public class TetrisManager : MonoBehaviour
 
     void MoveTetromino(int x, int y)
     {
-        _currentTet.Position += new Vector2(x, y);
+        _currentTet.Position = new Vector2(MapWrapX((int)_currentTet.Position.x + x), MapWrapY((int)_currentTet.Position.y + y));
         if (HasConflict())
         {
-            _currentTet.Position -= new Vector2(x, y);
+            _currentTet.Position = new Vector2(MapWrapX((int)_currentTet.Position.x - x), MapWrapY((int)_currentTet.Position.y - y));
         }
     }
 
@@ -103,7 +103,8 @@ public class TetrisManager : MonoBehaviour
         Vector2 oldPos = _currentTet.Position;
 
         // Simulates rotation
-        _currentTet.Position += _currentTet.RotationToPosDisplace(_currentTet.BlockType, _currentTet.Orientation, rotatingRight);
+        Vector2 posDisplace = _currentTet.RotationToPosDisplace(_currentTet.BlockType, _currentTet.Orientation, rotatingRight);
+        _currentTet.Position = new Vector2(MapWrapX((int)_currentTet.Position.x + (int)posDisplace.x), MapWrapY((int)_currentTet.Position.y + (int)posDisplace.y));
         _currentTet.Orientation += rotatingRight ? 1 : -1;
         _currentTet.Shape = _currentTet.BlockToShape(_currentTet.BlockType, _currentTet.Orientation);
 
@@ -111,7 +112,7 @@ public class TetrisManager : MonoBehaviour
         if (HasConflict())
         {
             // If wall kick fails, revert rotation
-            if (!AttemptWallKick())
+            if (!AttemptWallKick(rotatingRight))
             {
                 _currentTet.Orientation -= rotatingRight ? 1 : -1;
                 _currentTet.Shape = oldShape;
@@ -123,48 +124,79 @@ public class TetrisManager : MonoBehaviour
     // Returns whether a configuration would conflict with the current board
     public bool HasConflict()
     {
-        for (int i = 0; i < _currentTet.Shape.GetLength(0); i++)
-            for (int j = 0; j < _currentTet.Shape.GetLength(1); j++)
+        for (int i = 0; i < _currentTet.Height; i++)
+            for (int j = 0; j < _currentTet.Width; j++)
                 if (_currentTet.Shape[i, j] != 0)
-                    if (_landed[i + (int)_currentTet.Position.y, j + (int)_currentTet.Position.x] != 0)
+                    if (_landed[MapWrapY(i + (int)_currentTet.Position.y), MapWrapX(j + (int)_currentTet.Position.x)] != 0)
                         return true;
         return false;
     }
 
     // Attempts a wall kick, returns false if fails
-    public bool AttemptWallKick()
+    public bool AttemptWallKick(bool rotatingRight)
     {
-        // Since a simple rotation fails, this attempts all the test cases
-        _currentTet.Position = new Vector2(_currentTet.Position.x + 1, _currentTet.Position.y);
-        if (HasConflict())
+        // Gets the right configuration of test cases
+        Vector2[] testCases = new Vector2[4];
+        if (_currentTet.BlockType == Block.I)
         {
-            _currentTet.Position = new Vector2(_currentTet.Position.x, _currentTet.Position.y - 1);
-            if (HasConflict())
+            switch (_currentTet.Orientation)
             {
-                _currentTet.Position = new Vector2(_currentTet.Position.x - 1, _currentTet.Position.y + 3);
-                if (HasConflict())
-                {
-                    _currentTet.Position = new Vector2(_currentTet.Position.x + 1, _currentTet.Position.y);
-                    if (HasConflict())
-                    {
-                        _currentTet.Position = new Vector2(_currentTet.Position.x - 1, _currentTet.Position.y - 2);
-                        return false;
-                    }
-                }
+                case 0:
+                    testCases = rotatingRight ? (new Vector2[] { new Vector2(1, 0), new Vector2(-2, 0), new Vector2(1, 2), new Vector2(-2, -1) }) : (new Vector2[] { new Vector2(2, 0), new Vector2(-1, 0), new Vector2(2, -1), new Vector2(-1, 2) });
+                    break;
+                case 1:
+                    testCases = rotatingRight ? (new Vector2[] { new Vector2(-2, 0), new Vector2(1, 0), new Vector2(-2, 1), new Vector2(1, -2) }) : (new Vector2[] { new Vector2(1, 0), new Vector2(-2, 0), new Vector2(1, 2), new Vector2(-2, -1) });
+                    break;
+                case 2:
+                    testCases = rotatingRight ? (new Vector2[] { new Vector2(-1, 0), new Vector2(2, 0), new Vector2(-1, -2), new Vector2(1, 2) }) : (new Vector2[] { new Vector2(-2, 0), new Vector2(1, 0), new Vector2(-2, 1), new Vector2(1, -2) });
+                    break;
+                case 3:
+                    testCases = rotatingRight ? (new Vector2[] { new Vector2(2, 0), new Vector2(-1, 0), new Vector2(2, -1), new Vector2(-1, 2) }) : (new Vector2[] { new Vector2(-1, 0), new Vector2(2, 0), new Vector2(-1, -2), new Vector2(2, 1) });
+                    break;
+                default:
+                    break;
             }
         }
-        return true;
+        else
+        {
+            switch (_currentTet.Orientation)
+            {
+                case 0:
+                    testCases = rotatingRight ? (new Vector2[] { new Vector2(-1, 0), new Vector2(-1, 1), new Vector2(0, -2), new Vector2(-1, -2) }) : (new Vector2[] { new Vector2(1, 0), new Vector2(1, 1), new Vector2(0, -2), new Vector2(1, -2) });
+                    break;
+                case 1:
+                    testCases = rotatingRight ? (new Vector2[] { new Vector2(-1, 0), new Vector2(-1, -1), new Vector2(0, 2), new Vector2(-1, 2) }) : (new Vector2[] { new Vector2(-1, 0), new Vector2(-1, -1), new Vector2(0, 1), new Vector2(-1, 2) });
+                    break;
+                case 2:
+                    testCases = rotatingRight ? (new Vector2[] { new Vector2(1, 0), new Vector2(1, 1), new Vector2(0, -2), new Vector2(1, -2) }) : (new Vector2[] { new Vector2(-1, 0), new Vector2(-1, 1), new Vector2(0, -2), new Vector2(-1, -2) });
+                    break;
+                case 3:
+                    testCases = rotatingRight ? (new Vector2[] { new Vector2(1, 0), new Vector2(1, -1), new Vector2(0, 2), new Vector2(1, 2) }) : (new Vector2[] { new Vector2(1, 0), new Vector2(1, -1), new Vector2(0, 2), new Vector2(1, 2) });
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        // Runs through test cases, applies earliest one that works
+        foreach (Vector2 testCase in testCases)
+        {
+            Vector2 oldPos = _currentTet.Position;
+            _currentTet.Position = new Vector2(MapWrapX((int)_currentTet.Position.x + (int)testCase.x), MapWrapY((int)_currentTet.Position.y + (int)testCase.y));
+            if (HasConflict())
+                _currentTet.Position = oldPos;
+            else
+                return true;
+        }
+        return false;
     }
 
-    public int mapWrapX(int x) => mod(x, _landed.GetLength(1));
-
-    public int mapWrapY(int y) => mod(y, _landed.GetLength(0));
+    public int MapWrapX(int x) => mod(x, _landed.GetLength(1));
+    public int MapWrapY(int y) => mod(y, _landed.GetLength(0));
 
     // Helper function for modulo that works consistently with negative numbers
-    int mod(int x, int m)
-    {
-        return (x % m + m) % m;
-    }
+    int mod(int x, int m) => (x % m + m) % m;
+    
     /*
     void OnGUI()
     {
