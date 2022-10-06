@@ -24,7 +24,6 @@ public class Tetromino
     private int[,] _shape;
     private int _orientation; // 0 - Default, Upright S
     private Vector2 _position;
-    private Vector2 _forecastPos;
 
     // Properties
     public Block BlockType { get => _blockType; }
@@ -33,7 +32,6 @@ public class Tetromino
     public int Width { get => _shape.GetLength(1); }
     public int Height { get => _shape.GetLength(0); }
     public Vector2 Position { get => _position; set => _position = value; }
-    public Vector2 ForecastPos { get => _forecastPos; set => _forecastPos = value; }
 
     // Constructor
     public Tetromino(Block block, Vector2 position)
@@ -42,7 +40,6 @@ public class Tetromino
         _shape = BlockToShape(block, 0);
         _orientation = 0;
         _position = position;
-        _forecastPos = new Vector2(position.x, position.y + 1);
     }
 
     public int[,] BlockToShape(Block block, int orientation) => block switch

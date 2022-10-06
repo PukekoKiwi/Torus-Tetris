@@ -5,6 +5,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 using static UnityEngine.ParticleSystem;
+using Random = UnityEngine.Random;
 
 public class TetrisManager : MonoBehaviour
 {
@@ -12,12 +13,8 @@ public class TetrisManager : MonoBehaviour
     private int _minorSegments;
     private int[,] _landed;
 
-    // Used for tetris piece gravity snaps
-    private float _elapsedFTT = 0f;
-    private float _fastTickTime = 0.1f;
-    //private int _fastTickCount = 0;
-    private float _elapsedNTT = 0f;
-    private float _normalTickTime = 0.8f;
+    private float _elapsedFrames = 0f;
+    private float _framesPerTick = 20f;
     //private int _normalTickCount = 0;
 
     private Dictionary<char, int[,]> _tetMap = new Dictionary<char, int[,]>();
@@ -35,6 +32,11 @@ public class TetrisManager : MonoBehaviour
         // Creates 2D array for tetris representation
         _landed = new int[_majorSegments, _minorSegments];
 
+        for (int i = 0; i < _minorSegments; i++)
+        {
+            _landed[_majorSegments - 1, i] = 1;
+        }
+
         // Spawns a tetromino at the top left
         _currentTet = new Tetromino(Block.T, new Vector2(2, 2));
     }
@@ -42,22 +44,16 @@ public class TetrisManager : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        // Executes functions on fast ticks
-        _elapsedFTT += Time.deltaTime;
-        if (_elapsedFTT >= _fastTickTime)
-        {
-            _elapsedFTT = _elapsedFTT % _fastTickTime;
-            // Do things during fast ticks here
-            //_fastTickCount++;
-        }
 
         // Executes functions on normal ticks
-        _elapsedNTT += Time.deltaTime;
-        if (_elapsedNTT >= _normalTickTime)
+        _elapsedFrames += 1;
+        if (_elapsedFrames >= _framesPerTick)
         {
-            _elapsedNTT = _elapsedNTT % _normalTickTime;
-            // Do things during normal ticks here
-            //_normalTickCount++;
+            _elapsedFrames = _elapsedFrames % _framesPerTick;
+            // Do things with each tick here
+            MoveTetromino(0, 1);
+
+            // TODO: implement gravity switching
         }
 
         //TODO: Implement wrapping
@@ -72,10 +68,15 @@ public class TetrisManager : MonoBehaviour
             RotateTetromino(true);
         }
 
+        if (Input.GetKeyDown(KeyCode.UpArrow))
+        {
+            RotateTetromino(true);
+        }
+
         if (Input.GetKeyDown(KeyCode.DownArrow))
         {
             MoveTetromino(0, 1);
-        }
+        } 
 
         if (Input.GetKeyDown(KeyCode.LeftArrow))
         {
@@ -94,6 +95,8 @@ public class TetrisManager : MonoBehaviour
         if (HasConflict())
         {
             _currentTet.Position = new Vector2(MapWrapX((int)_currentTet.Position.x - x), MapWrapY((int)_currentTet.Position.y - y));
+            if (y > 0)
+                LockTetromino();
         }
     }
 
@@ -119,6 +122,21 @@ public class TetrisManager : MonoBehaviour
                 _currentTet.Position = oldPos;
             }
         }
+    }
+
+    void LockTetromino()
+    {
+        // Transfers the tetromino to the board
+        for (int i = 0; i < _currentTet.Height; i++)
+            for (int j = 0; j < _currentTet.Width; j++)
+                if (_currentTet.Shape[i, j] != 0)
+                    _landed[MapWrapY(i + (int)_currentTet.Position.y), MapWrapX(j + (int)_currentTet.Position.x)] = _currentTet.Shape[i, j];
+        SpawnTet();
+    }
+
+    void SpawnTet()
+    {
+        _currentTet = new Tetromino((Block)Random.Range(2, 8), new Vector2(2, 2));
     }
 
     // Returns whether a configuration would conflict with the current board
