@@ -9,15 +9,21 @@ using Random = UnityEngine.Random;
 
 public class TetrisManager : MonoBehaviour
 {
+    // Game board variables
     private int _majorSegments;
     private int _minorSegments;
     private int[,] _landed;
 
+    // Game tick variables
     private float _elapsedFrames = 0f;
     private float _framesPerTick = 20f;
-    //private int _normalTickCount = 0;
+    private float _lockDelay = 60f;
 
-    private Dictionary<char, int[,]> _tetMap = new Dictionary<char, int[,]>();
+    // Gravity-related variables
+    private float _normalDropFrames = 25f;
+    private float _softDropFrames = 7f;
+
+    // Tetromino variables
     private Tetromino _currentTet;
 
     // Properties
@@ -44,6 +50,8 @@ public class TetrisManager : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        // Helps with lock delat
+        DelayLock();
 
         // Executes functions on normal ticks
         _elapsedFrames += 1;
@@ -56,7 +64,6 @@ public class TetrisManager : MonoBehaviour
             // TODO: implement gravity switching
         }
 
-        //TODO: Implement wrapping
 
         if (Input.GetKeyDown(KeyCode.Z))
         {
@@ -73,10 +80,23 @@ public class TetrisManager : MonoBehaviour
             RotateTetromino(true);
         }
 
+        // Soft dropping & gravity speed
+        if (!DelayLock())
+        {
+            if (Input.GetKey(KeyCode.DownArrow))
+            {
+                _framesPerTick = _softDropFrames;
+            }
+            else
+            {
+                _framesPerTick = _normalDropFrames;
+            }
+        }
+
         if (Input.GetKeyDown(KeyCode.DownArrow))
         {
             MoveTetromino(0, 1);
-        } 
+        }
 
         if (Input.GetKeyDown(KeyCode.LeftArrow))
         {
@@ -87,6 +107,11 @@ public class TetrisManager : MonoBehaviour
         {
             MoveTetromino(1, 0);
         }
+    }
+
+    void SpawnTet()
+    {
+        _currentTet = new Tetromino((Block)Random.Range(2, 9), new Vector2(2, 2));
     }
 
     void MoveTetromino(int x, int y)
@@ -134,9 +159,20 @@ public class TetrisManager : MonoBehaviour
         SpawnTet();
     }
 
-    void SpawnTet()
+    bool DelayLock()
     {
-        _currentTet = new Tetromino((Block)Random.Range(2, 8), new Vector2(2, 2));
+        bool isDelaying = false;
+        if (!Input.GetKey(KeyCode.DownArrow))
+        {
+            _currentTet.Position = new Vector2(MapWrapX((int)_currentTet.Position.x), MapWrapY((int)_currentTet.Position.y + 1));
+            if (HasConflict())
+            {
+                _framesPerTick = _lockDelay;
+                isDelaying = true;
+            }
+            _currentTet.Position = new Vector2(MapWrapX((int)_currentTet.Position.x), MapWrapY((int)_currentTet.Position.y - 1));
+        }
+        return isDelaying;
     }
 
     // Returns whether a configuration would conflict with the current board
@@ -215,11 +251,4 @@ public class TetrisManager : MonoBehaviour
     // Helper function for modulo that works consistently with negative numbers
     int mod(int x, int m) => (x % m + m) % m;
     
-    /*
-    void OnGUI()
-    {
-        GUI.Box(new Rect(Screen.width - 100, 10, 100, 20), $"Fast: {_fastTickCount}");
-        GUI.Box(new Rect(Screen.width - 100, 35, 100, 20), $"Normal: {_normalTickCount}");
-    }
-    */
 }
